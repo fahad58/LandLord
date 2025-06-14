@@ -15,7 +15,7 @@ class My_Properties_Screen extends StatefulWidget {
 
 class _My_Properties_ScreenState extends State<My_Properties_Screen> {
   List<Property> get properties => widget.properties;
-//
+
   void _deleteProperty(int index) {
     showDialog(
       context: context,
@@ -39,28 +39,28 @@ class _My_Properties_ScreenState extends State<My_Properties_Screen> {
     );
   }
 
-void _editProperty(int index) async {
-  final property = properties[index];
-  dynamic updated;
-  if (property.type == 'Single House') {
-    updated = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => UpdateSingleHouseFormScreen(property: property),
-      ),
-    );
-  } else {
-    updated = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => UpdateMultiUnitScreen(property: property),
-      ),
-    );
+  void _editProperty(int index) async {
+    final property = properties[index];
+    dynamic updated;
+    if (property.type == 'Single House') {
+      updated = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => UpdateSingleHouseFormScreen(property: property),
+        ),
+      );
+    } else {
+      updated = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => UpdateMultiUnitScreen(property: property),
+        ),
+      );
+    }
+    if (updated != null && updated is Property) {
+      setState(() => properties[index] = updated);
+    }
   }
-  if (updated != null && updated is Property) {
-    setState(() => properties[index] = updated);
-  }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +79,7 @@ void _editProperty(int index) async {
                 height: size.height / 3,
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Color(0xff8d70fe), Color(0xff2da9ef)],
+                    colors: [Color(0xff12265c), Color(0xff12265c)],
                     begin: Alignment.centerRight,
                     end: Alignment.centerLeft,
                   ),
@@ -139,7 +139,7 @@ void _editProperty(int index) async {
   }
 }
 
-class PropertyCard extends StatefulWidget {
+class PropertyCard extends StatelessWidget {
   final Property property;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
@@ -152,92 +152,42 @@ class PropertyCard extends StatefulWidget {
   });
 
   @override
-  State<PropertyCard> createState() => _PropertyCardState();
-}
-
-class _PropertyCardState extends State<PropertyCard>
-    with SingleTickerProviderStateMixin {
-  bool expanded = false;
-
-  @override
   Widget build(BuildContext context) {
-    final prop = widget.property;
-    final isSingle = prop.type == 'Single House';
-    final isMultiUnit = prop.type == 'Multi-Unit';
-    
+    final isSingle = property.type == 'Single House';
 
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-      child: Card(
-        elevation: 3,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: InkWell(
-          onTap: () => setState(() => expanded = !expanded),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      isSingle ? Icons.house : Icons.apartment,
-                      size: 36,
-                      color: Colors.grey.shade700,
-                    ),
-                    const SizedBox(width: 8),
-                Expanded(
-                      child: Text(
-                        prop.name,
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.edit, color: Colors.blue),
-                      onPressed: widget.onEdit,
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: widget.onDelete,
-                    ),
-                    Icon(
-                      expanded ? Icons.expand_less : Icons.expand_more,
-                      color: Colors.grey,
-                    ),
-                  ],
-                ),
-                if (expanded) ...[
-                  const SizedBox(height: 8),
-                  buildDetail('name', prop.name),
-                  buildDetail('Address', prop.address),
-                  buildDetail('Postal Code', prop.postalCode),
-                  buildDetail('Rooms', prop.rooms.toString()),
-                  buildDetail('Garden', prop.hasGarden ? 'Yes' : 'No'),
-                  buildDetail('Parking', prop.hasParking ? 'Yes' : 'No'),
-                  buildDetail('Rent', '${prop.rent}'),
-                  buildDetail('Type', prop.type),
-                  
-                ],
-              ],
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+        child: Row(
+          children: [
+            Icon(
+              isSingle ? Icons.house : Icons.apartment,
+              size: 36,
+              color: Colors.grey.shade700,
             ),
-          ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                property.name,
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.edit, color: Colors.blue),
+              onPressed: onEdit,
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: onDelete,
+            ),
+          ],
         ),
       ),
     );
   }
-
-  Widget buildDetail(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 4),
-      child: Text(
-        '$label: $value',
-        style: GoogleFonts.poppins(fontSize: 14, color: Colors.black87),
-      ),
-    );
-  }
-  
 }
