@@ -137,7 +137,7 @@ class AddTenantScreenState extends State<AddTenantScreen> {
             child: Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xff8d70fe), Color(0xff2da9ef)],
+                  colors: [Color(0xff12265c), Color(0xff12265c)],
                   begin: Alignment.centerRight,
                   end: Alignment.centerLeft,
                 ),
