@@ -12,10 +12,12 @@ class AddPropertyScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color backgroundGradientStart = HexColor("#8d70fe");
-    final Color backgroundGradientEnd = HexColor("#2da9ef");
+    final Color backgroundColor = const Color(0xff12265c);
     final Color cardColor = Colors.white;
     final Color textColor = HexColor("#333333");
+    // Define the gradient colors
+    final Color backgroundGradientStart = const Color(0xff12265c);
+    final Color backgroundGradientEnd = const Color(0xff274690);
 
     return Scaffold(
       body: Container(
