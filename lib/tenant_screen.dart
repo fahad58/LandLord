@@ -15,7 +15,7 @@ class _TenantsScreenState extends State<TenantsScreen> {
   List<Tenant> get tenants => widget.tenants;
 
   void _editTenant(Tenant tenant) {
-    // TODO: Add your tenant editing logic
+   
   }
 
   void _deleteTenant(Tenant tenant) {
