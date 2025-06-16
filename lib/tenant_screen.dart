@@ -1,167 +1,431 @@
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously
+
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'tenant_model.dart';
+import 'property_model.dart';
+import 'add_tenant_screen.dart';
 
 class TenantsScreen extends StatefulWidget {
   final List<Tenant> tenants;
+  final List<Property> properties;
 
-  const TenantsScreen({super.key, required this.tenants});
-
-  @override
-  State<TenantsScreen> createState() => _TenantsScreenState();
-}
-
-class _TenantsScreenState extends State<TenantsScreen> {
-  List<Tenant> get tenants => widget.tenants;
-
-  void _editTenant(Tenant tenant) {
-   
-  }
-
-  void _deleteTenant(Tenant tenant) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Delete Tenant"),
-        content: const Text("Are you sure you want to delete this tenant?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancel"),
-          ),
-          TextButton(
-            onPressed: () {
-              setState(() => tenants.remove(tenant));
-              Navigator.pop(ctx);
-            },
-            child: const Text("Delete", style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-
-    return Scaffold(
-      body: SizedBox(
-        width: size.width,
-        height: size.height,
-        child: Stack(
-          children: [
-            // Background gradient
-            Positioned(
-              child: Container(
-                width: size.width,
-                height: size.height / 3,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xff12265c), Color(0xff12265c)],
-                    begin: Alignment.centerRight,
-                    end: Alignment.centerLeft,
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 60),
-                    Text(
-                      'My Tenants',
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 38,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // White container with list
-            Positioned(
-              top: size.height / 4.5,
-              left: 16,
-              child: Container(
-                width: size.width - 32,
-                height: size.height / 1.4,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: tenants.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No tenants added yet.',
-                          style: GoogleFonts.poppins(fontSize: 18),
-                        ),
-                      )
-                    : ListView.separated(
-                        padding: const EdgeInsets.all(12),
-                        itemCount: tenants.length,
-                        itemBuilder: (context, index) {
-                          final tenant = tenants[index];
-                          return TenantCard(
-                            tenant: tenant,
-                            onEdit: () => _editTenant(tenant),
-                            onDelete: () => _deleteTenant(tenant),
-                          );
-                        },
-                        separatorBuilder: (_, __) =>
-                            const SizedBox(height: 10),
-                      ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class TenantCard extends StatelessWidget {
-  final Tenant tenant;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-
-  const TenantCard({
+  const TenantsScreen({
     super.key,
-    required this.tenant,
-    required this.onEdit,
-    required this.onDelete,
+    required this.tenants,
+    required this.properties,
   });
 
   @override
+  TenantsScreenState createState() => TenantsScreenState();
+}
+
+class TenantsScreenState extends State<TenantsScreen> {
+  String _searchQuery = '';
+  String _filterStatus = 'All';
+
+  List<Tenant> get filteredTenants {
+    return widget.tenants.where((tenant) {
+      final matchesSearch = tenant.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                          tenant.contact.toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchesFilter = _filterStatus == 'All' ||
+                          (_filterStatus == 'With Pets' && tenant.hasPets) ||
+                          (_filterStatus == 'Married' && tenant.isMarried);
+      return matchesSearch && matchesFilter;
+    }).toList();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-        child: Row(
-          children: [
-            const Icon(Icons.person, size: 36, color: Colors.indigo),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                tenant.name,
-                style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
+    return Scaffold(
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.white,
+        title: Text(
+          'Tenants',
+          style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.sort, color: Colors.black),
+            onPressed: () {
+              //  Implement sorting options
+            },
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Search and Filter Section
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: Offset(0, 2),
                 ),
+              ],
+            ),
+            child: Column(
+              children: [
+                TextField(
+                  onChanged: (value) => setState(() => _searchQuery = value),
+                  decoration: InputDecoration(
+                    hintText: 'Search tenants...',
+                    prefixIcon: Icon(Icons.search),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                  ),
+                ),
+                SizedBox(height: 12),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      FilterChip(
+                        selected: _filterStatus == 'All',
+                        label: Text('All'),
+                        onSelected: (selected) {
+                          setState(() => _filterStatus = 'All');
+                        },
+                      ),
+                      SizedBox(width: 8),
+                      FilterChip(
+                        selected: _filterStatus == 'With Pets',
+                        label: Text('With Pets'),
+                        onSelected: (selected) {
+                          setState(() => _filterStatus = 'With Pets');
+                        },
+                      ),
+                      SizedBox(width: 8),
+                      FilterChip(
+                        selected: _filterStatus == 'Married',
+                        label: Text('Married'),
+                        onSelected: (selected) {
+                          setState(() => _filterStatus = 'Married');
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Tenant List
+          Expanded(
+            child: filteredTenants.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.people_outline,
+                          size: 64,
+                          color: Colors.grey,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'No tenants found',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: EdgeInsets.all(16),
+                    itemCount: filteredTenants.length,
+                    itemBuilder: (context, index) {
+                      final tenant = filteredTenants[index];
+                      return Dismissible(
+                        key: Key(tenant.name),
+                        background: Container(
+                          color: Colors.red,
+                          alignment: Alignment.centerRight,
+                          padding: EdgeInsets.only(right: 16),
+                          child: Icon(
+                            Icons.delete,
+                            color: Colors.white,
+                          ),
+                        ),
+                        direction: DismissDirection.endToStart,
+                        confirmDismiss: (direction) async {
+                          return await showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: Text('Delete Tenant'),
+                                content: Text(
+                                  'Are you sure you want to delete ${tenant.name}?'
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => 
+                                      Navigator.of(context).pop(false),
+                                    child: Text('CANCEL'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => 
+                                      Navigator.of(context).pop(true),
+                                    child: Text(
+                                      'DELETE',
+                                      style: TextStyle(color: Colors.red),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        },
+                        onDismissed: (direction) {
+                          setState(() {
+                            widget.tenants.removeWhere(
+                              (t) => t.name == tenant.name
+                            );
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('${tenant.name} deleted'),
+                              backgroundColor: Colors.red,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        },
+                        child: Card(
+                          margin: EdgeInsets.only(bottom: 16),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () {
+                              //  Navigate to tenant details
+                            },
+                            child: Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 24,
+                                        backgroundColor: Colors.blue.withOpacity(0.1),
+                                        child: Text(
+                                          tenant.name[0].toUpperCase(),
+                                          style: TextStyle(
+                                            color: Colors.blue,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 20,
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Text(
+                                                  tenant.name,
+                                                  style: TextStyle(
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                SizedBox(width: 8),
+                                                IconButton(
+                                                  icon: Icon(
+                                                    Icons.edit,
+                                                    size: 20,
+                                                    color: Colors.blue,
+                                                  ),
+                                                  onPressed: () async {
+                                                    final result = await Navigator.push<Tenant>(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (_) => AddTenantScreen(
+                                                          property: tenant.assignedProperty,
+                                                         // existingTenant: tenant,
+                                                        ),
+                                                      ),
+                                                    );
+
+                                                    if (result != null) {
+                                                      setState(() {
+                                                        final index = widget.tenants.indexWhere(
+                                                          (t) => t.name == tenant.name
+                                                        );
+                                                        if (index != -1) {
+                                                          widget.tenants[index] = result;
+                                                        }
+                                                      });
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        SnackBar(
+                                                          content: Text('Tenant updated successfully'),
+                                                          backgroundColor: Colors.green,
+                                                          behavior: SnackBarBehavior.floating,
+                                                        ),
+                                                      );
+                                                    }
+                                                  },
+                                                  padding: EdgeInsets.zero,
+                                                  constraints: BoxConstraints(),
+                                                  tooltip: 'Edit Tenant',
+                                                ),
+                                              ],
+                                            ),
+                                            SizedBox(height: 4),
+                                            Text(
+                                              tenant.contact,
+                                              style: TextStyle(
+                                                color: Colors.grey[600],
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.green.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(20),
+                                        ),
+                                        child: Text(
+                                          '\$${tenant.rentAmount}/month',
+                                          style: TextStyle(
+                                            color: Colors.green,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      _buildInfoChip(
+                                        Icons.home,
+                                        tenant.propertyName,
+                                      ),
+                                      if (tenant.level != null) ...[
+                                        SizedBox(width: 8),
+                                        _buildInfoChip(
+                                          Icons.apartment,
+                                          'Level ${tenant.level}',
+                                        ),
+                                      ],
+                                      if (tenant.unit != null) ...[
+                                        SizedBox(width: 8),
+                                        _buildInfoChip(
+                                          Icons.door_front_door,
+                                          'Unit ${tenant.unit}',
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      if (tenant.hasPets)
+                                        _buildInfoChip(
+                                          Icons.pets,
+                                          'Has Pets',
+                                        ),
+                                      if (tenant.hasPets && tenant.isMarried)
+                                        SizedBox(width: 8),
+                                      if (tenant.isMarried)
+                                        _buildInfoChip(
+                                          Icons.favorite,
+                                          'Married',
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          if (widget.properties.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Please add a property first'),
+                backgroundColor: Colors.red,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+            return;
+          }
+
+          final result = await Navigator.push<Tenant>(
+            context,
+            MaterialPageRoute(
+              builder: (_) => AddTenantScreen(
+                property: widget.properties.first,
               ),
             ),
-            IconButton(
-              icon: const Icon(Icons.edit, color: Colors.blue),
-              onPressed: onEdit,
+          );
+
+          if (result != null) {
+            setState(() {
+              widget.tenants.add(result);
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Tenant added successfully'),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        },
+        backgroundColor: Colors.blue,
+        child: Icon(Icons.person_add),
+      ),
+    );
+  }
+
+  Widget _buildInfoChip(IconData icon, String label) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: Colors.grey[600]),
+          SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 12,
             ),
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: onDelete,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
