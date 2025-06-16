@@ -22,7 +22,7 @@ class Property {
     this.levels,
     this.unitsPerLevel,
   });
-
+bool get isSingleUnit => normalizedType == PropertyType.singleHouse.toLowerCase();
   /// Returns total unit count: for multi-unit buildings levels * unitsPerLevel, otherwise 1
   int get unitCount {
     if (isMultiUnit) {
