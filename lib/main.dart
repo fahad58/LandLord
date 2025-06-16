@@ -1,10 +1,13 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
+import 'package:landlord/properties_screen.dart';
+import 'multi_unit_build_form.dart';
+import 'single_unit_build_form.dart';
 import 'property_model.dart';
-import 'properties_screen.dart';
-import 'tenant_screen.dart';
+import 'tenant_screen.dart' as tenant_screen;
 import 'tenant_model.dart';
 import 'add_property_screen.dart';
-import 'add_tenant_screen.dart';
 import 'details.dart';
 
 void main() {
@@ -17,10 +20,26 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Landlord App',
+      title: 'Property Manager',
       theme: ThemeData(
         primarySwatch: Colors.blue,
-        scaffoldBackgroundColor: Colors.white,
+        scaffoldBackgroundColor: Colors.grey[50],
+        appBarTheme: AppBarTheme(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          iconTheme: IconThemeData(color: Colors.black),
+          titleTextStyle: TextStyle(
+            color: Colors.black,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        cardTheme: CardThemeData(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
       ),
       home: const HomeScreen(),
     );
@@ -34,12 +53,11 @@ class HomeScreen extends StatefulWidget {
   HomeScreenState createState() => HomeScreenState();
 }
 
-bool _showAddOptions = false;
-
 class HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   final List<Property> _properties = [];
   final List<Tenant> _tenants = [];
+  bool _showAddOptions = false;
 
   void _navigateTo(int index) {
     setState(() {
@@ -50,7 +68,7 @@ class HomeScreenState extends State<HomeScreen> {
     if (index == 0) {
       page = My_Properties_Screen(properties: _properties);
     } else {
-      page = TenantsScreen(tenants: _tenants);
+      page = tenant_screen.TenantsScreen(tenants: _tenants, properties: _properties);
     }
 
     Navigator.push(
@@ -66,295 +84,367 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _handleAddProperty() async {
-    final result = await Navigator.push(
+  Future<void> _handleAddProperty() async {
+    final result = await Navigator.push<Property>(
       context,
       MaterialPageRoute(builder: (_) => const AddPropertyScreen()),
     );
 
-    if (result != null && result is Property) {
+    if (result != null) {
       setState(() {
         _properties.add(result);
       });
     }
   }
 
-  void _handleAddTenant() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AddTenantScreen(
-          properties: _properties,
-          onTenantAdded: (tenant) {
-            setState(() {
-              _tenants.add(tenant);
-            });
-          },
-        ),
-      ),
-    );
-
-    if (result != null && result is Tenant) {
-      setState(() {
-        _tenants.add(result);
-      });
-    }
-  }
-
-  void _handleTenantAdded(Tenant tenant) {
-    setState(() {
-      _tenants.add(tenant);
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Land Lord'),
-        centerTitle: true,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.home_work, color: Colors.blue),
+            ),
+            SizedBox(width: 12),
+            Text('Property Manager'),
+          ],
         ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.notifications_none),
+            onPressed: () {
+              // Implement notifications
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.person_outline),
+            onPressed: () {
+              Scaffold.of(context).openDrawer();
+            },
+          ),
+        ],
       ),
       drawer: Drawer(
         child: Column(
           children: [
-            const SizedBox(height: 60),
+            UserAccountsDrawerHeader(
+              decoration: BoxDecoration(
+                color: Colors.blue,
+              ),
+              currentAccountPicture: CircleAvatar(
+                backgroundColor: Colors.white,
+                child: Icon(Icons.person, size: 40, color: Colors.blue),
+              ),
+              accountName: Text('Property Manager'),
+              accountEmail: Text('manager@example.com'),
+            ),
             ListTile(
-              leading: const Icon(Icons.account_circle),
-              title: const Text('Account'),
+              leading: Icon(Icons.dashboard_outlined),
+              title: Text('Dashboard'),
               onTap: () {},
             ),
-            const Spacer(),
             ListTile(
-              leading: const Icon(Icons.settings),
-              title: const Text('Settings'),
+              leading: Icon(Icons.home_outlined),
+              title: Text('Properties'),
+              onTap: () => _navigateTo(0),
+            ),
+            ListTile(
+              leading: Icon(Icons.people_outline),
+              title: Text('Tenants'),
+              onTap: () => _navigateTo(1),
+            ),
+            Divider(),
+            ListTile(
+              leading: Icon(Icons.settings_outlined),
+              title: Text('Settings'),
               onTap: () {},
             ),
-            const SizedBox(height: 20),
+            ListTile(
+              leading: Icon(Icons.help_outline),
+              title: Text('Help & Support'),
+              onTap: () {},
+            ),
+            Spacer(),
+            Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'Version 1.0.0',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
           ],
         ),
       ),
       body: _properties.isEmpty
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      'Welcome to Your Property Portfolio',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Click the button below to add your first property',
-                      style: TextStyle(fontSize: 16),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton.icon(
-                      onPressed: _handleAddProperty,
-                      icon: const Icon(Icons.add_home),
-                      label: const Text('Add Your First Property'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        textStyle: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          : Padding(
-              padding: const EdgeInsets.all(16),
-              child: GridView.builder(
-                shrinkWrap: true,
-                physics: const BouncingScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 0.75,
-                ),
-                itemCount: _properties.length,
-                itemBuilder: (context, index) {
-                  final property = _properties[index];
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => DetailsScreen(
-                            property: property,
-                            tenants: _tenants,
-                            onTenantAdded: _handleTenantAdded,
-                          ),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        color: Colors.white,
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 8,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Container(
-                            height: 80,
-                            decoration: const BoxDecoration(
-                              color: Color(0xff1e40af),
-                              borderRadius: BorderRadius.only(
-                                topLeft: Radius.circular(16),
-                                topRight: Radius.circular(16),
-                              ),
-                            ),
-                            child: Center(
-                              child: Icon(
-                                property.isMultiUnit ? Icons.apartment : Icons.house,
-                                size: 36,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    property.name,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey.shade200,
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Text(
-                                      property.unitCount == 1
-                                          ? '1 Unit'
-                                          : '${property.unitCount} Units',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.black54,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 60.0, right: 16.0),
-        child: SizedBox(
-          width: 250,
-          height: 160,
-          child: Stack(
-            alignment: Alignment.bottomRight,
-            children: [
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 300),
-                bottom: _showAddOptions ? 100 : 40,
-                right: _showAddOptions ? 80 : 0,
-                child: AnimatedOpacity(
-                  opacity: _showAddOptions ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 300),
-                  child: SizedBox(
-                    width: 160,
-                    child: FloatingActionButton.extended(
-                      heroTag: 'addProperty',
-                      onPressed: () {
-                        setState(() => _showAddOptions = false);
-                        _handleAddProperty();
-                      },
-                      icon: const Icon(Icons.home),
-                      label: const Text('Add Property'),
-                      backgroundColor: Colors.blue,
-                    ),
-                  ),
-                ),
-              ),
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 300),
-                bottom: _showAddOptions ? 20 : 40,
-                right: _showAddOptions ? 80 : 0,
-                child: AnimatedOpacity(
-                  opacity: _showAddOptions ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 300),
-                  child: SizedBox(
-                    width: 160,
-                    child: FloatingActionButton.extended(
-                      heroTag: 'addTenant',
-                      onPressed: () {
-                        setState(() => _showAddOptions = false);
-                        _handleAddTenant();
-                      },
-                      icon: const Icon(Icons.person_add),
-                      label: const Text('Add Tenant'),
-                      backgroundColor: Colors.green,
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: FloatingActionButton(
-                  heroTag: 'mainFAB',
-                  onPressed: () {
-                    setState(() => _showAddOptions = !_showAddOptions);
-                  },
-                  child: Icon(_showAddOptions ? Icons.close : Icons.add),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+          ? _buildEmptyState()
+          : _buildPropertyList(),
+      floatingActionButton: _buildFloatingActionButton(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _navigateTo,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Properties'),
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Tenants'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home),
+            label: 'Properties',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.people_outline),
+            activeIcon: Icon(Icons.people),
+            label: 'Tenants',
+          ),
+        ],
+        selectedItemColor: Colors.blue,
+        unselectedItemColor: Colors.grey,
+        type: BottomNavigationBarType.fixed,
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              color: Colors.blue.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.home_work_outlined,
+              size: 64,
+              color: Colors.blue,
+            ),
+          ),
+          SizedBox(height: 24),
+          Text(
+            'Welcome to Property Manager',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 12),
+          Text(
+            'Start by adding your first property',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey[600],
+            ),
+          ),
+          SizedBox(height: 32),
+          ElevatedButton.icon(
+            onPressed: _handleAddProperty,
+            icon: Icon(Icons.add_home),
+            label: Text('Add Your First Property'),
+            style: ElevatedButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPropertyList() {
+    return ListView.builder(
+      padding: EdgeInsets.all(16),
+      itemCount: _properties.length,
+      itemBuilder: (context, index) {
+        final property = _properties[index];
+        return Card(
+          margin: EdgeInsets.only(bottom: 16),
+          child: InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => PropertyDetailScreen(
+                    property: property,
+                    tenants: _tenants,
+                    onTenantAdded: (tenant) {
+                      setState(() {
+                        _tenants.add(tenant);
+                      });
+                    },
+                  ),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Column(
+              children: [
+                Container(
+                  height: 160,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+                    image: DecorationImage(
+                      image: AssetImage(
+                        property.isSingleUnit
+                            ? 'android/asset/animations/house.png'
+                            : 'android/asset/animations/building.png',
+                      ),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            property.name,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              '\$${property.rent}/month',
+                              style: TextStyle(
+                                color: Colors.blue,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        '${property.address}, ${property.postalCode}',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      SizedBox(height: 12),
+                      Row(
+                        children: [
+                          _buildPropertyFeature(
+                            Icons.bed,
+                            '${property.rooms} Rooms',
+                          ),
+                          SizedBox(width: 16),
+                          if (property.hasParking)
+                            _buildPropertyFeature(
+                              Icons.local_parking,
+                              'Parking',
+                            ),
+                          if (property.hasParking && property.hasGarden)
+                            SizedBox(width: 16),
+                          if (property.hasGarden)
+                            _buildPropertyFeature(
+                              Icons.park,
+                              'Garden',
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPropertyFeature(IconData icon, String label) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: Colors.grey[600]),
+        SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.grey[600],
+            fontSize: 14,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFloatingActionButton() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 60.0, right: 16.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_showAddOptions) ...[
+            FloatingActionButton.extended(
+              heroTag: 'addSingleHouse',
+              onPressed: () async {
+                setState(() => _showAddOptions = false);
+                final result = await Navigator.push<Property>(
+                  context,
+                  MaterialPageRoute(builder: (_) => SingleHouseFormScreen()),
+                );
+
+                if (result != null) {
+                  setState(() {
+                    _properties.add(result);
+                  });
+                }
+              },
+              icon: Icon(Icons.home),
+              label: Text('Single House'),
+              backgroundColor: Colors.blue,
+            ),
+            SizedBox(height: 16),
+            FloatingActionButton.extended(
+              heroTag: 'addMultiUnit',
+              onPressed: () async {
+                setState(() => _showAddOptions = false);
+                final result = await Navigator.push<Property>(
+                  context,
+                  MaterialPageRoute(builder: (_) => MultiUnitFormScreen()),
+                );
+
+                if (result != null) {
+                  setState(() {
+                    _properties.add(result);
+                  });
+                }
+              },
+              icon: Icon(Icons.apartment),
+              label: Text('Multi Unit'),
+              backgroundColor: Colors.green,
+            ),
+            SizedBox(height: 16),
+          ],
+          FloatingActionButton(
+            heroTag: 'mainFAB',
+            onPressed: () {
+              setState(() => _showAddOptions = !_showAddOptions);
+            },
+            backgroundColor: Colors.blue,
+            child: Icon(_showAddOptions ? Icons.close : Icons.add),
+          ),
         ],
       ),
     );
