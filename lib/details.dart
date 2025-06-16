@@ -1,14 +1,17 @@
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'property_model.dart';
 import 'tenant_model.dart';
 import 'add_tenant_screen.dart';
+import 'tenant_details_screen.dart';
 
-class DetailsScreen extends StatefulWidget {
+class PropertyDetailScreen extends StatefulWidget {
   final Property property;
   final List<Tenant> tenants;
   final Function(Tenant) onTenantAdded;
 
-  const DetailsScreen({
+  const PropertyDetailScreen({
     super.key,
     required this.property,
     required this.tenants,
@@ -16,75 +19,425 @@ class DetailsScreen extends StatefulWidget {
   });
 
   @override
-  State<DetailsScreen> createState() => _DetailsScreenState();
+  PropertyDetailScreenState createState() => PropertyDetailScreenState();
 }
 
-class _DetailsScreenState extends State<DetailsScreen> {
-  late List<Tenant> assignedTenants;
+class PropertyDetailScreenState extends State<PropertyDetailScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  List<Tenant> get propertyTenants => widget.tenants
+      .where((tenant) => tenant.propertyName == widget.property.name)
+      .toList();
 
   @override
   void initState() {
     super.initState();
-    _filterTenants();
+    _tabController = TabController(length: 3, vsync: this);
   }
 
-  void _filterTenants() {
-    assignedTenants = widget.tenants.where((t) {
-      return t.assignedProperty.name == widget.property.name;
-    }).toList();
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
-  Future<void> _addTenant() async {
-    final newTenant = await Navigator.push<Tenant>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AddTenantScreen(
-          properties: [widget.property],
-          onTenantAdded: (tenant) {
-            Navigator.pop(context, tenant);
-          },
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: CustomScrollView(
+        slivers: [
+          // Custom App Bar with Property Image
+          SliverAppBar(
+            expandedHeight: 240,
+            pinned: true,
+            flexibleSpace: FlexibleSpaceBar(
+              background: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.asset(
+                    widget.property.isSingleUnit
+                        ? 'android/asset/animations/house.png'
+                        : 'android/asset/animations/building.png',
+                    fit: BoxFit.cover,
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.7),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              title: Text(widget.property.name),
+            ),
+          ),
+          // Property Details
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                // Quick Stats Cards
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      _buildStatCard(
+                        'Monthly Rent',
+                        '\$${widget.property.rent}',
+                        Icons.attach_money,
+                        Colors.green,
+                      ),
+                      SizedBox(width: 16),
+                      _buildStatCard(
+                        'Units',
+                        '${widget.property.unitCount}',
+                        Icons.apartment,
+                        Colors.blue,
+                      ),
+                      SizedBox(width: 16),
+                      _buildStatCard(
+                        'Occupancy',
+                        '${(propertyTenants.length / widget.property.unitCount * 100).round()}%',
+                        Icons.people,
+                        Colors.orange,
+                      ),
+                    ],
+                  ),
+                ),
+                // Tab Bar
+                TabBar(
+                  controller: _tabController,
+                  labelColor: Colors.blue,
+                  unselectedLabelColor: Colors.grey,
+                  tabs: [
+                    Tab(text: 'Details'),
+                    Tab(text: 'Tenants'),
+                    Tab(text: 'Analytics'),
+                  ],
+                ),
+                // Tab Views
+                SizedBox(
+                  height: 500, // Fixed height for tab content
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildDetailsTab(),
+                      _buildTenantsTab(),
+                      _buildAnalyticsTab(),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          final result = await Navigator.push<Tenant>(
+            context,
+            MaterialPageRoute(
+              builder: (_) => AddTenantScreen(property: widget.property),
+            ),
+          );
+
+          if (result != null) {
+            widget.onTenantAdded(result);
+            // Show success message
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Tenant added successfully'),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        },
+        icon: Icon(Icons.person_add),
+        label: Text('Add Tenant'),
+        backgroundColor: Colors.blue,
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+    return Expanded(
+      child: Card(
+        elevation: 2,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Icon(icon, color: color),
+              SizedBox(height: 8),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );
-
-    if (newTenant != null) {
-      widget.onTenantAdded(newTenant);
-      setState(() {
-        _filterTenants();
-      });
-    }
   }
 
-  Widget _infoRow(String label1, String value1, String label2, String value2) {
+  Widget _buildDetailsTab() {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: const TextStyle(fontSize: 14, color: Colors.black),
-                children: [
-                  TextSpan(
-                    text: "$label1: ",
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+          _buildDetailItem('Address', widget.property.address),
+          _buildDetailItem('Postal Code', widget.property.postalCode),
+          _buildDetailItem('Rooms', widget.property.rooms.toString()),
+          _buildDetailItem('Type', widget.property.type),
+          if (widget.property.isMultiUnit) ...[
+            _buildDetailItem('Levels', widget.property.levels.toString()),
+            _buildDetailItem('Units per Level', widget.property.unitsPerLevel.toString()),
+          ],
+          SizedBox(height: 16),
+          Text(
+            'Amenities',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (widget.property.hasGarden)
+                _buildAmenityChip('Garden', Icons.park),
+              if (widget.property.hasParking)
+                _buildAmenityChip('Parking', Icons.local_parking),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTenantsTab() {
+    return propertyTenants.isEmpty
+        ? Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.people_outline,
+                  size: 64,
+                  color: Colors.grey,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'No tenants yet',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.grey[600],
                   ),
-                  TextSpan(text: value1),
-                ],
+                ),
+              ],
+            ),
+          )
+        : ListView.builder(
+            padding: EdgeInsets.all(16),
+            itemCount: propertyTenants.length,
+            itemBuilder: (context, index) {
+              final tenant = propertyTenants[index];
+              return Card(
+                margin: EdgeInsets.only(bottom: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => TenantDetailsScreen(tenant: tenant),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 24,
+                              backgroundColor: Colors.blue.withOpacity(0.1),
+                              child: Text(
+                                tenant.name[0].toUpperCase(),
+                                style: TextStyle(
+                                  color: Colors.blue,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 20,
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    tenant.name,
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    tenant.contact,
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.green.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                '\$${tenant.rentAmount}/month',
+                                style: TextStyle(
+                                  color: Colors.green,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 12),
+                        Row(
+                          children: [
+                            if (tenant.level != null)
+                              _buildInfoChip(
+                                Icons.apartment,
+                                'Level ${tenant.level}',
+                              ),
+                            if (tenant.unit != null) ...[
+                              SizedBox(width: 8),
+                              _buildInfoChip(
+                                Icons.door_front_door,
+                                'Unit ${tenant.unit}',
+                              ),
+                            ],
+                          ],
+                        ),
+                        SizedBox(height: 8),
+                        Row(
+                          children: [
+                            if (tenant.hasPets)
+                              _buildInfoChip(
+                                Icons.pets,
+                                'Has Pets',
+                              ),
+                            if (tenant.hasPets && tenant.isMarried)
+                              SizedBox(width: 8),
+                            if (tenant.isMarried)
+                              _buildInfoChip(
+                                Icons.favorite,
+                                'Married',
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+  }
+
+  Widget _buildAnalyticsTab() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Financial Overview',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 16),
+          _buildAnalyticCard(
+            'Monthly Revenue',
+            '\$${widget.property.rent * propertyTenants.length}',
+            'From ${propertyTenants.length} occupied units',
+            Icons.trending_up,
+            Colors.green,
+          ),
+          SizedBox(height: 16),
+          _buildAnalyticCard(
+            'Vacancy Loss',
+            '\$${widget.property.rent * (widget.property.unitCount - propertyTenants.length)}',
+            'From ${widget.property.unitCount - propertyTenants.length} vacant units',
+            Icons.trending_down,
+            Colors.red,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 14,
               ),
             ),
           ),
           Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: const TextStyle(fontSize: 14, color: Colors.black),
-                children: [
-                  TextSpan(
-                    text: "$label2: ",
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  TextSpan(text: value2),
-                ],
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
@@ -93,90 +446,69 @@ class _DetailsScreenState extends State<DetailsScreen> {
     );
   }
 
-  Widget _sectionCard(String title, List<Widget> children) {
+  Widget _buildAmenityChip(String label, IconData icon) {
+    return Chip(
+      avatar: Icon(icon, size: 16),
+      label: Text(label),
+      backgroundColor: Colors.grey[100],
+    );
+  }
+
+  Widget _buildAnalyticCard(
+    String title,
+    String value,
+    String subtitle,
+    IconData icon,
+    Color color,
+  ) {
     return Card(
-      elevation: 3,
-      margin: const EdgeInsets.only(bottom: 24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Row(
+              children: [
+                Icon(icon, color: color),
+                SizedBox(width: 8),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
             ),
-            const Divider(height: 20, thickness: 2),
-            ...children
+            SizedBox(height: 8),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final property = widget.property;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(property.name),
-        centerTitle: true,
-        backgroundColor: const Color(0xff1e40af),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            _sectionCard('Building Information', [
-              _infoRow("Street", property.address, "Name", property.name),
-              _infoRow("Type", property.type, "Rooms", property.rooms.toString()),
-              _infoRow("Garden", property.hasGarden ? "Yes" : "No", "Parking", property.hasParking ? "Yes" : "No"),
-              _infoRow("Rent", "\$${property.rent.toStringAsFixed(2)}", "Postal Code", property.postalCode),
-            ]),
-            _sectionCard('Assigned Tenants', [
-              if (assignedTenants.isEmpty) ...[
-                const Text('No tenants assigned yet.', style: TextStyle(fontSize: 16)),
-                const SizedBox(height: 10),
-                ElevatedButton.icon(
-                  onPressed: _addTenant,
-                  icon: const Icon(Icons.person_add),
-                  label: const Text('Add Tenant'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xff12265c),
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-              ] else ...[
-                for (var tenant in assignedTenants) ...[
-                  const Divider(height: 20, thickness: 1),
-                  Text(tenant.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 6),
-                  _infoRow("Contact", tenant.contact, "Nationality", tenant.nationality),
-                  _infoRow("Married", tenant.isMarried ? "Yes" : "No", "Has Pets", tenant.hasPets ? "Yes" : "No"),
-                  _infoRow("Rent", "\$${tenant.rentAmount.toStringAsFixed(2)}", "", ""),
-                  if (property.type == 'Multi-Unit')
-                    _infoRow("Level", tenant.level?.toString() ?? "-", "Unit", tenant.unit?.toString() ?? "-"),
-                ],
-                const SizedBox(height: 20),
-                Center(
-                  child: ElevatedButton.icon(
-                    onPressed: _addTenant,
-                    icon: const Icon(Icons.person_add_alt_1),
-                    label: const Text('Add Another Tenant'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xff12265c),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    ),
-                  ),
-                ),
-              ]
-            ]),
-          ],
-        ),
-      ),
+  Widget _buildInfoChip(IconData icon, String label) {
+    return Chip(
+      avatar: Icon(icon, size: 16, color: Colors.blue),
+      label: Text(label),
+      backgroundColor: Colors.grey[100],
     );
   }
 }
