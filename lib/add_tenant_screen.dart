@@ -1,17 +1,16 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:hexcolor/hexcolor.dart';
+import 'package:flutter/services.dart';
 import 'property_model.dart';
 import 'tenant_model.dart';
 
 class AddTenantScreen extends StatefulWidget {
-  final List<Property> properties;
-  final Function(Tenant) onTenantAdded;
-
+  final Property property;
+  
   const AddTenantScreen({
     super.key,
-    required this.properties,
-    required this.onTenantAdded,
+    required this.property,
   });
 
   @override
@@ -19,303 +18,318 @@ class AddTenantScreen extends StatefulWidget {
 }
 
 class AddTenantScreenState extends State<AddTenantScreen> {
-  Property? selectedProperty;
-  int? selectedLevel;
-  int? selectedUnit;
-
   final _formKey = GlobalKey<FormState>();
+  
+  // Form controllers
+  final _nameController = TextEditingController();
+  final _contactController = TextEditingController();
+  final _nationalityController = TextEditingController();
+  final _rentAmountController = TextEditingController();
+  
+  // Multi-unit specific controllers
+  final _levelController = TextEditingController();
+  final _unitController = TextEditingController();
+  
+  // Form values
+  bool _isMarried = false;
+  bool _hasPets = false;
 
-  String tenantName = '';
-  String tenantContact = '';
-  String nationality = '';
-  bool isMarried = false;
-  bool hasPets = false;
-  double rentAmount = 0.0;
-
-  final Color mainTextColor = HexColor("#4f4f4f");
-  final Color secondaryTextColor = HexColor("#8d8d8d");
-  final Color textFieldBackground = HexColor("#f0f3f1");
-  final Color buttonBackground = HexColor("#fed8c3");
-
-  late final TextStyle labelTextStyle = GoogleFonts.poppins(
-    fontSize: 18,
-    color: secondaryTextColor,
-  );
-
-  late final TextStyle buttonTextStyle = GoogleFonts.poppins(
-    fontSize: 15,
-    color: mainTextColor,
-  );
-
-  InputDecoration inputDecoration({String? label, String? hint}) {
-    return InputDecoration(
-      labelText: label,
-      labelStyle: labelTextStyle,
-      hintText: hint,
-      hintStyle: GoogleFonts.poppins(
-        fontSize: 15,
-        color: secondaryTextColor,
-      ),
-      fillColor: textFieldBackground,
-      filled: true,
-      contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(30),
-        borderSide: BorderSide.none,
-      ),
-    );
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _contactController.dispose();
+    _nationalityController.dispose();
+    _rentAmountController.dispose();
+    _levelController.dispose();
+    _unitController.dispose();
+    super.dispose();
   }
 
-  ButtonStyle buttonStyle() {
-    return ButtonStyle(
-      elevation: WidgetStateProperty.all(0),
-      backgroundColor: WidgetStateProperty.all(buttonBackground),
-      shape: WidgetStateProperty.all<RoundedRectangleBorder>(
-        RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(30),
-        ),
-      ),
-      padding: WidgetStateProperty.all(
-        const EdgeInsets.symmetric(vertical: 15, horizontal: 90),
-      ),
-      textStyle: WidgetStateProperty.all(buttonTextStyle),
-    );
-  }
-
-  List<int> get levelsList =>
-      List.generate(selectedProperty?.levels ?? 0, (i) => i + 1);
-
-  List<int> get unitsList =>
-      List.generate(selectedProperty?.unitsPerLevel ?? 0, (i) => i + 1);
-
-  final Map<String, Set<String>> occupiedUnits = {};
-
-  bool isUnitOccupied(int level, int unit) {
-    String key = '${selectedProperty?.name}_$level';
-    return occupiedUnits[key]?.contains(unit.toString()) ?? false;
-  }
-
-  void _saveTenant() {
-    if (_formKey.currentState!.validate() && selectedProperty != null) {
-      _formKey.currentState!.save();
-
-      Tenant newTenant = Tenant(
-        name: tenantName,
-        contact: tenantContact,
-        assignedProperty: selectedProperty!,
-        level: selectedProperty!.type == 'Multi-Unit' ? selectedLevel : null,
-        unit: selectedProperty!.type == 'Multi-Unit' ? selectedUnit : null,
-        nationality: nationality,
-        isMarried: isMarried,
-        hasPets: hasPets,
-        rentAmount: rentAmount,
+  void _submitForm() {
+    if (_formKey.currentState!.validate()) {
+      final tenant = Tenant(
+        name: _nameController.text,
+        contact: _contactController.text,
+        nationality: _nationalityController.text,
+        isMarried: _isMarried,
+        hasPets: _hasPets,
+        rentAmount: double.parse(_rentAmountController.text),
+        assignedProperty: widget.property,
+        level: widget.property.isMultiUnit ? int.parse(_levelController.text) : null,
+        unit: widget.property.isMultiUnit ? int.parse(_unitController.text) : null,
       );
 
-      if (selectedProperty!.type == 'Multi-Unit') {
-        String key = '${selectedProperty!.name}_$selectedLevel';
-        occupiedUnits.putIfAbsent(key, () => {});
-        occupiedUnits[key]!.add(selectedUnit.toString());
-      }
-
-      widget.onTenantAdded(newTenant);
-      Navigator.pop(context);
+      Navigator.pop(context, tenant);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-
     return Scaffold(
-      body: Stack(
-        children: [
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: size.height / 3,
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xff12265c), Color(0xff12265c)],
-                  begin: Alignment.centerRight,
-                  end: Alignment.centerLeft,
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.white,
+        title: Text(
+          'Add Tenant',
+          style: TextStyle(color: Colors.black),
+        ),
+        leading: IconButton(
+          icon: Icon(Icons.close, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: EdgeInsets.all(16),
+          children: [
+            // Property Info Card
+            Card(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Property Information',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        widget.property.isSingleUnit ? Icons.home : Icons.apartment,
+                        color: Colors.blue,
+                      ),
+                      title: Text(widget.property.name),
+                      subtitle: Text(widget.property.address),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ),
-          Positioned(
-            top: size.height / 5,
-            left: 16,
-            right: 16,
-            bottom: 20,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back),
-                        color: Colors.black87,
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                      Expanded(
-                        child: Text(
-                          "Tenant Form",
-                          style: GoogleFonts.poppins(
-                            color: Colors.black87,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 28,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      const SizedBox(width: 48),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Expanded(
-                    child: Form(
-                      key: _formKey,
-                      child: ListView(
-                        physics: const BouncingScrollPhysics(),
-                        children: [
-                          DropdownButtonFormField<Property>(
-                            decoration: inputDecoration(label: 'Select Property'),
-                            items: widget.properties
-                                .map((p) => DropdownMenuItem(
-                                      value: p,
-                                      child: Text('${p.name} (${p.type})'),
-                                    ))
-                                .toList(),
-                            onChanged: (val) {
-                              setState(() {
-                                selectedProperty = val;
-                                selectedLevel = null;
-                                selectedUnit = null;
-                              });
-                            },
-                            validator: (val) => val == null
-                                ? 'Please select a property'
-                                : null,
-                          ),
-                          if (selectedProperty?.type == 'Multi-Unit') ...[
-                            const SizedBox(height: 15),
-                            DropdownButtonFormField<int>(
-                              decoration: inputDecoration(label: 'Select Level'),
-                              items: levelsList
-                                  .map((lvl) => DropdownMenuItem(
-                                        value: lvl,
-                                        child: Text('Level $lvl'),
-                                      ))
-                                  .toList(),
-                              onChanged: (val) {
-                                setState(() {
-                                  selectedLevel = val;
-                                  selectedUnit = null;
-                                });
-                              },
-                              validator: (val) => val == null
-                                  ? 'Please select a level'
-                                  : null,
-                            ),
-                            const SizedBox(height: 15),
-                            DropdownButtonFormField<int>(
-                              decoration: inputDecoration(label: 'Select Unit'),
-                              items: unitsList
-                                  .map((unit) {
-                                    bool occupied = selectedLevel != null &&
-                                        isUnitOccupied(selectedLevel!, unit);
-                                    return DropdownMenuItem(
-                                      value: occupied ? null : unit,
-                                      enabled: !occupied,
-                                      child: Text(
-                                        'Unit $unit ${occupied ? '(Occupied)' : '(Available)'}',
-                                        style: TextStyle(
-                                          color: occupied
-                                              ? Colors.grey
-                                              : Colors.black,
-                                        ),
-                                      ),
-                                    );
-                                  })
-                                  .toList(),
-                              onChanged: (val) => setState(() => selectedUnit = val),
-                              validator: (val) => val == null
-                                  ? 'Please select a unit'
-                                  : null,
-                            ),
-                          ],
-                          const SizedBox(height: 15),
-                          TextFormField(
-                            decoration: inputDecoration(label: 'Tenant Name'),
-                            onSaved: (val) => tenantName = val ?? '',
-                            validator: (val) =>
-                                val == null || val.isEmpty ? 'Enter tenant name' : null,
-                            cursorColor: mainTextColor,
-                          ),
-                          const SizedBox(height: 15),
-                          TextFormField(
-                            decoration: inputDecoration(label: 'Contact Info'),
-                            onSaved: (val) => tenantContact = val ?? '',
-                            validator: (val) =>
-                                val == null || val.isEmpty ? 'Enter contact info' : null,
-                            cursorColor: mainTextColor,
-                          ),
-                          const SizedBox(height: 15),
-                          TextFormField(
-                            decoration: inputDecoration(label: 'Nationality'),
-                            onSaved: (val) => nationality = val ?? '',
-                            cursorColor: mainTextColor,
-                          ),
-                          SwitchListTile(
-                            title: Text("Is Married", style: labelTextStyle),
-                            value: isMarried,
-                            onChanged: (val) => setState(() => isMarried = val),
-                            activeColor: buttonBackground,
-                            contentPadding: EdgeInsets.zero,
-                          ),
-                          SwitchListTile(
-                            title: Text("Has Pets", style: labelTextStyle),
-                            value: hasPets,
-                            onChanged: (val) => setState(() => hasPets = val),
-                            activeColor: buttonBackground,
-                            contentPadding: EdgeInsets.zero,
-                          ),
-                          const SizedBox(height: 15),
-                          TextFormField(
-                            decoration: inputDecoration(label: 'Rent Amount'),
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            onSaved: (val) =>
-                                rentAmount = double.tryParse(val ?? '') ?? 0.0,
-                            validator: (val) =>
-                                val == null || val.isEmpty ? 'Enter rent amount' : null,
-                            cursorColor: mainTextColor,
-                          ),
-                          const SizedBox(height: 25),
-                          Center(
-                            child: ElevatedButton(
-                              onPressed: _saveTenant,
-                              style: buttonStyle(),
-                              child: const Text("Save Tenant"),
-                            ),
-                          ),
-                          const SizedBox(height: 30),
-                        ],
+            SizedBox(height: 16),
+            // Personal Information
+            Card(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Personal Information',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                ],
+                    SizedBox(height: 16),
+                    TextFormField(
+                      controller: _nameController,
+                      decoration: InputDecoration(
+                        labelText: 'Full Name',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.person),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter tenant name';
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 16),
+                    TextFormField(
+                      controller: _contactController,
+                      decoration: InputDecoration(
+                        labelText: 'Contact Number',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.phone),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter contact number';
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 16),
+                    TextFormField(
+                      controller: _nationalityController,
+                      decoration: InputDecoration(
+                        labelText: 'Nationality',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.public),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter nationality';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
+            SizedBox(height: 16),
+            // Rental Details
+            Card(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Rental Details',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    TextFormField(
+                      controller: _rentAmountController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                      ],
+                      decoration: InputDecoration(
+                        labelText: 'Monthly Rent',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.attach_money),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter monthly rent';
+                        }
+                        return null;
+                      },
+                    ),
+                    if (widget.property.isMultiUnit) ...[
+                      SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _levelController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly
+                              ],
+                              decoration: InputDecoration(
+                                labelText: 'Level',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.layers),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Required';
+                                }
+                                final level = int.tryParse(value);
+                                if (level == null || level < 1 || 
+                                    level > (widget.property.levels ?? 1)) {
+                                  return 'Invalid level';
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                          SizedBox(width: 16),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _unitController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly
+                              ],
+                              decoration: InputDecoration(
+                                labelText: 'Unit',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.meeting_room),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Required';
+                                }
+                                final unit = int.tryParse(value);
+                                if (unit == null || unit < 1 || 
+                                    unit > (widget.property.unitsPerLevel ?? 1)) {
+                                  return 'Invalid unit';
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: 16),
+            // Additional Information
+            Card(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Additional Information',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SwitchListTile(
+                      title: Text('Married'),
+                      value: _isMarried,
+                      onChanged: (value) => setState(() => _isMarried = value),
+                    ),
+                    SwitchListTile(
+                      title: Text('Has Pets'),
+                      value: _hasPets,
+                      onChanged: (value) => setState(() => _hasPets = value),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: Offset(0, -5),
+            ),
+          ],
+        ),
+        child: ElevatedButton(
+          onPressed: _submitForm,
+          style: ElevatedButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
-        ],
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Text(
+              'Add Tenant',
+              style: TextStyle(fontSize: 16),
+            ),
+          ),
+        ),
       ),
     );
   }
