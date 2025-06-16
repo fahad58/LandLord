@@ -4,20 +4,17 @@ class Tenant {
   final String name;
   final String contact;
   final String nationality;
-  
- 
   final bool isMarried;
   final bool hasPets;
   final double rentAmount;
-  final Property assignedProperty;
-  final int? level; // Only used for multi-unit buildings
-  final int? unit;  // Only used for multi-unit buildings
+  final Property assignedProperty; // Store full property reference
+  final int? level; // Only for multi-unit buildings
+  final int? unit;
 
   Tenant({
     required this.name,
     required this.contact,
     required this.nationality,
-    
     required this.isMarried,
     required this.hasPets,
     required this.rentAmount,
@@ -25,5 +22,6 @@ class Tenant {
     this.level,
     this.unit,
   });
-  
+
+  String get propertyName => assignedProperty.name;
 }
