@@ -1,135 +1,270 @@
 import 'package:flutter/material.dart';
 import 'property_model.dart';
-import 'updatepropertyscreen.dart';
-import 'update_multi_screen.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class My_Properties_Screen extends StatefulWidget {
   final List<Property> properties;
 
-  const My_Properties_Screen({super.key, required this.properties});
+  const My_Properties_Screen({
+    super.key,
+    required this.properties,
+  });
 
   @override
-  State<My_Properties_Screen> createState() => _My_Properties_ScreenState();
+  // ignore: library_private_types_in_public_api
+  _My_Properties_ScreenState createState() => _My_Properties_ScreenState();
 }
 
 class _My_Properties_ScreenState extends State<My_Properties_Screen> {
-  List<Property> get properties => widget.properties;
+  String _searchQuery = '';
+  String _filterType = 'All';
+  
+  List<Property> get filteredProperties {
+    return widget.properties.where((property) {
+      final matchesSearch = property.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                          property.address.toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchesFilter = _filterType == 'All' || 
+                          property.type == _filterType;
+      return matchesSearch && matchesFilter;
+    }).toList();
+  }
 
-  void _deleteProperty(int index) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Delete Property"),
-        content: const Text("Are you sure you want to delete this property?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancel"),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.white,
+        title: Text(
+          'My Properties',
+          style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
           ),
-          TextButton(
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.analytics_outlined, color: Colors.black),
             onPressed: () {
-              setState(() => properties.removeAt(index));
-              Navigator.pop(ctx);
+              //  Navigate to analytics dashboard
             },
-            child: const Text("Delete"),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Search and Filter Section
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  // ignore: deprecated_member_use
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                // Search Bar
+                TextField(
+                  onChanged: (value) => setState(() => _searchQuery = value),
+                  decoration: InputDecoration(
+                    hintText: 'Search properties...',
+                    prefixIcon: Icon(Icons.search),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                  ),
+                ),
+                SizedBox(height: 12),
+                // Filter Chips
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      FilterChip(
+                        selected: _filterType == 'All',
+                        label: Text('All'),
+                        onSelected: (selected) {
+                          setState(() => _filterType = 'All');
+                        },
+                      ),
+                      SizedBox(width: 8),
+                      FilterChip(
+                        selected: _filterType == 'Single House',
+                        label: Text('Single House'),
+                        onSelected: (selected) {
+                          setState(() => _filterType = 'Single House');
+                        },
+                      ),
+                      SizedBox(width: 8),
+                      FilterChip(
+                        selected: _filterType == 'Multi-Unit',
+                        label: Text('Multi-Unit'),
+                        onSelected: (selected) {
+                          setState(() => _filterType = 'Multi-Unit');
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Property List
+          Expanded(
+            child: filteredProperties.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.home_work_outlined,
+                          size: 64,
+                          color: Colors.grey,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'No properties found',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: EdgeInsets.all(16),
+                    itemCount: filteredProperties.length,
+                    itemBuilder: (context, index) {
+                      final property = filteredProperties[index];
+                      return PropertyListItem(
+                        property: property,
+                        onTap: () {
+                          //  Navigate to property details
+                        },
+                      );
+                    },
+                  ),
           ),
         ],
       ),
     );
   }
+}
 
-  void _editProperty(int index) async {
-    final property = properties[index];
-    dynamic updated;
-    if (property.type == 'Single House') {
-      updated = await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => UpdateSingleHouseFormScreen(property: property),
-        ),
-      );
-    } else {
-      updated = await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => UpdateMultiUnitScreen(property: property),
-        ),
-      );
-    }
-    if (updated != null && updated is Property) {
-      setState(() => properties[index] = updated);
-    }
-  }
+class PropertyListItem extends StatelessWidget {
+  final Property property;
+  final VoidCallback onTap;
+
+  const PropertyListItem({
+    super.key,
+    required this.property,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-
-    return Scaffold(
-      body: SizedBox(
-        width: size.width,
-        height: size.height,
-        child: Stack(
+    return Card(
+      margin: EdgeInsets.only(bottom: 16),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Background gradient
-            Positioned(
-              child: Container(
-                width: size.width,
-                height: size.height / 3,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xff12265c), Color(0xff12265c)],
-                    begin: Alignment.centerRight,
-                    end: Alignment.centerLeft,
+            // Property Image Section
+            Container(
+              height: 200,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                image: DecorationImage(
+                  image: AssetImage(
+                    property.isSingleUnit
+                        ? 'android/asset/animations/house.png'
+                        : 'android/asset/animations/building.png',
                   ),
-                ),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 60),
-                    Text(
-                      'My Properties',
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 38,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+                  fit: BoxFit.cover,
                 ),
               ),
             ),
-
-            // White card container
-            Positioned(
-              top: size.height / 4.5,
-              left: 16,
-              child: Container(
-                width: size.width - 32,
-                height: size.height / 1.4,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: properties.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No properties added yet.',
-                          style: GoogleFonts.poppins(fontSize: 18),
+            // Property Details Section
+            Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        property.name,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
                         ),
-                      )
-                    : ListView.separated(
-                        padding: const EdgeInsets.all(12),
-                        itemCount: properties.length,
-                        itemBuilder: (context, index) {
-                          return PropertyCard(
-                            property: properties[index],
-                            onEdit: () => _editProperty(index),
-                            onDelete: () => _deleteProperty(index),
-                          );
-                        },
-                        separatorBuilder: (_, __) => const SizedBox(height: 10),
                       ),
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          // ignore: deprecated_member_use
+                          color: Colors.blue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          '\$${property.rent}/month',
+                          style: TextStyle(
+                            color: Colors.blue,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    '${property.address}, ${property.postalCode}',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  // Property Features
+                  Row(
+                    children: [
+                      _buildFeatureChip(
+                        Icons.king_bed,
+                        '${property.rooms} Rooms',
+                      ),
+                      SizedBox(width: 8),
+                      if (property.hasParking)
+                        _buildFeatureChip(
+                          Icons.local_parking,
+                          'Parking',
+                        ),
+                      SizedBox(width: 8),
+                      if (property.hasGarden)
+                        _buildFeatureChip(
+                          Icons.park,
+                          'Garden',
+                        ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
@@ -137,56 +272,27 @@ class _My_Properties_ScreenState extends State<My_Properties_Screen> {
       ),
     );
   }
-}
 
-class PropertyCard extends StatelessWidget {
-  final Property property;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-
-  const PropertyCard({
-    super.key,
-    required this.property,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isSingle = property.type == 'Single House';
-
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-        child: Row(
-          children: [
-            Icon(
-              isSingle ? Icons.house : Icons.apartment,
-              size: 36,
-              color: Colors.grey.shade700,
+  Widget _buildFeatureChip(IconData icon, String label) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: Colors.grey[600]),
+          SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 12,
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                property.name,
-                style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.edit, color: Colors.blue),
-              onPressed: onEdit,
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: onDelete,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
